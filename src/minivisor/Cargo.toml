@@ -1,0 +1,30 @@
+[package]
+name = "minivisor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spin = { version = "0.10.0", default-features = false, features = ["mutex"] }
+wdk-sys = "0.5.1"
+hvcore = { path = "../hvcore" }
+
+[build-dependencies]
+wdk-build = "0.5.1"
+
+[lib]
+crate-type = ["cdylib"]
+test = false
+
+[package.metadata.wdk.driver-model]
+driver-type = "WDM"

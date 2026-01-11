@@ -1,0 +1,19 @@
+extend = "target/rust-driver-makefile.toml"
+
+[config]
+load_script = '''
+#!@rust
+//! ```cargo
+//! [dependencies]
+//! wdk-build = "0.5.1"
+//! ```
+#![allow(unused_doc_comments)]
+
+wdk_build::cargo_make::load_rust_driver_makefile()?
+'''
+
+# Shorten the time needed for `cargo make` by overriding the default with the
+# minimal required task.
+[tasks.default]
+clear = true
+dependencies = ["sign-driver-binary"]

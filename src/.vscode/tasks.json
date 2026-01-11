@@ -1,0 +1,38 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "rust: cargo make",
+            "command": "cargo make",
+            "options": {
+                "cwd": "${workspaceFolder}/minivisor"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "type": "shell",
+            "label": "rust: cargo make & run",
+            "command": "cargo make && cargo xtask vmware",
+            "options": {
+                "cwd": "${workspaceFolder}/minivisor"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "type": "shell",
+            "label": "rust: cargo doc",
+            "command": "cargo doc --no-deps",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+    ]
+}

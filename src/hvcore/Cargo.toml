@@ -1,0 +1,31 @@
+[package]
+name = "hvcore"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bitfield = "0.19.0"
+bitflags = "2.8.0"
+derive_more = { version = "2.0.1", default-features = false, features = [
+    "debug",
+    "display",
+    "error",
+    "try_from",
+] }
+linked_list_allocator = "0.10.5"
+log = { version = "0.4.22", default-features = false }
+spin = "0.10.0"
+
+[dev-dependencies]
+ctor = "0.6.0"
