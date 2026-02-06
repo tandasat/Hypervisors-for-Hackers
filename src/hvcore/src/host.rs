@@ -25,12 +25,15 @@ use crate::{
     serial_logger,
     x86_64::{
         control_registers::{CR4_SMEP, CR4_VMXE, cr0, cr2, cr3, cr4, write_cr4},
-        misc::Rflags,
+        misc::{Exception, Rflags},
         msr::{self, rdmsr, wrmsr},
         segment::{
             self, cs, ds, es, fs, gs, lar, ldtr, lsl, sgdt, sidt, ss, tr, vmx_access_rights,
         },
-        vmx::{self, BasicExitReason, Vmcs, VmxonRegion, vmcs},
+        vmx::{
+            self, BasicExitReason, InterruptType, MovCrAccessType, VmEntryInterruptionInfo,
+            VmExitQualificationMovCr, Vmcs, VmxonRegion, vmcs,
+        },
     },
 };
 
@@ -180,6 +183,7 @@ extern "C" fn entry_point(registers: &Registers) -> ! {
             BasicExitReason::Cpuid => handle_cpuid(registers),
             BasicExitReason::Rdmsr => handle_rdmsr(registers),
             BasicExitReason::Wrmsr => handle_wrmsr(registers),
+            BasicExitReason::MovCr => handle_mov_cr(registers),
             exit_reason => {
                 log::error!("{vmcs:#x?} {registers:#x?} cr2: {:#x?},", cr2());
                 panic!("Unhandled VM-exit {exit_reason_raw}💥: {exit_reason}");
@@ -439,6 +443,66 @@ fn handle_wrmsr(guest: &mut Registers) {
     log::trace!("WRMSR {msr:#x?} {value:#x?}");
     unsafe { wrmsr(msr, value) };
     advance_guest_rip();
+}
+
+/// Handles MOV-to-CRx instruction.
+fn handle_mov_cr(guest: &mut Registers) {
+    // Make sure that this VM-exit happened because of MOV-to-CR4 by checking the
+    // VM-exit qualification field.
+    // See: Table 29-3. Exit Qualification for Control-Register Accesses
+    let qualification = unsafe { vmread(vmcs::ro::EXIT_QUALIFICATION) };
+    let qualification = VmExitQualificationMovCr(qualification);
+    assert!(qualification.access_type() == MovCrAccessType::MovToCr as _);
+    assert!(qualification.control_register() == 4);
+
+    // Make sure that this VM-exit happened because the guest attempted to clear
+    // the SMEP bit.
+    let new_cr4 = requested_value_from(qualification.general_purpose_register(), guest);
+    let current_cr4 = unsafe { vmread(vmcs::guest::CR4) };
+    assert!((current_cr4 & CR4_SMEP != 0) && (new_cr4 & CR4_SMEP == 0));
+
+    // Inject #GP(0) to protect the SMEP bit and exit handling. No change in any
+    // registers including RIP.
+    inject_event(
+        InterruptType::HardwareException,
+        Exception::GeneralProtection,
+        Some(0),
+    );
+    log::error!("The guest attempted to turn off SMEP. Injecting #GP(0)");
+}
+
+fn inject_event(interrupt_type: InterruptType, vector: Exception, error_code: Option<u32>) {
+    let mut event = VmEntryInterruptionInfo(0);
+    event.set_valid(true);
+    event.set_interruption_type(interrupt_type as _);
+    event.set_vector(vector as _);
+    if let Some(error_code) = error_code {
+        event.set_deliver_error_code(true);
+        unsafe { vmwrite(vmcs::control::VMENTRY_EXCEPTION_ERR_CODE, error_code) };
+    }
+    unsafe { vmwrite(vmcs::control::VMENTRY_INTERRUPTION_INFO_FIELD, event.0) };
+}
+
+fn requested_value_from(index: u64, guest: &Registers) -> u64 {
+    match index {
+        0 => guest.rax,
+        1 => guest.rcx,
+        2 => guest.rdx,
+        3 => guest.rbx,
+        4 => unsafe { vmread(vmcs::guest::RSP) },
+        5 => guest.rbp,
+        6 => guest.rsi,
+        7 => guest.rdi,
+        8 => guest.r8,
+        9 => guest.r9,
+        10 => guest.r10,
+        11 => guest.r11,
+        12 => guest.r12,
+        13 => guest.r13,
+        14 => guest.r14,
+        15 => guest.r15,
+        _ => panic!("Undefined GPR index {index}"),
+    }
 }
 
 fn advance_guest_rip() {
