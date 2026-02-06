@@ -9,7 +9,7 @@
 use alloc::alloc::handle_alloc_error;
 use core::{
     alloc::Layout,
-    arch::global_asm,
+    arch::{global_asm, x86_64::__cpuid_count},
     ffi::c_void,
     ops::Range,
     sync::atomic::{AtomicU64, Ordering},
@@ -404,16 +404,12 @@ fn handle_cpuid(guest: &mut Registers) {
     let leaf = guest.rax as u32;
     let sub_leaf = guest.rcx as u32;
     log::trace!("CPUID {leaf:#x?} {sub_leaf:#x?}");
-
-    // We somehow need to emulate CPUID instruction by returning EAX, EBX, ECX,
-    // and EDX according to RAX and RCX (leaf and sub leaf).
-    unimplemented!("it is your first exercise :)");
-
-    //guest.rax = result_eax;
-    //guest.rbx = result_ebx;
-    //guest.rcx = result_ecx;
-    //guest.rdx = result_edx;
-    //advance_guest_rip();
+    let cpuid_result = unsafe { __cpuid_count(leaf, sub_leaf) };
+    guest.rax = u64::from(cpuid_result.eax);
+    guest.rbx = u64::from(cpuid_result.ebx);
+    guest.rcx = u64::from(cpuid_result.ecx);
+    guest.rdx = u64::from(cpuid_result.edx);
+    advance_guest_rip();
 }
 
 /// Handles the `RDMSR` instruction.
