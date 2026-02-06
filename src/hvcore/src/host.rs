@@ -24,7 +24,7 @@ use crate::{
     registers::Registers,
     serial_logger,
     x86_64::{
-        control_registers::{CR4_VMXE, cr0, cr2, cr3, cr4, write_cr4},
+        control_registers::{CR4_SMEP, CR4_VMXE, cr0, cr2, cr3, cr4, write_cr4},
         misc::Rflags,
         msr::{self, rdmsr, wrmsr},
         segment::{
@@ -288,6 +288,11 @@ fn initialize_control_fields() {
                 | vmcs::control::SecondaryControls::ENABLE_XSAVES_XRSTORS)
                 .bits(),
         );
+
+        // Intercept MOV-to-CR4 to protect the SMEP bit.
+        assert!(cr4() & CR4_SMEP != 0);
+        vmwrite(vmcs::control::CR4_GUEST_HOST_MASK, CR4_SMEP);
+        vmwrite(vmcs::control::CR4_READ_SHADOW, cr4());
     };
 }
 
