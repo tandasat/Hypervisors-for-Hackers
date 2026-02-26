@@ -87,15 +87,21 @@ If still does not work, try disabling secure boot.
 1. Install [Rust](https://rust-lang.org/tools/install/).
 2. Install [cargo make](https://github.com/sagiegurari/cargo-make) by running this command:
     ```
-    cargo install --force cargo-make
+    cargo install --locked cargo-make --no-default-features --features tls-native
     ```
-3. Optionally, install [VSCode](https://code.visualstudio.com/docs/?dv=win32arm64user) and the
+3. Install LLVM. Ensure you select the GUI option to add LLVM to the PATH.
+    ```
+    winget install -i LLVM.LLVM --version 17.0.6 --force
+    ```
+4. Download [eWDK](https://learn.microsoft.com/en-us/legal/windows/hardware/enterprise-wdk-license-2022) version 26H1 or later.
+5. Mount the eWDK ISO from a drive volume, say on the D drive.
+6. Optionally, install [VSCode](https://code.visualstudio.com/docs/?dv=win32arm64user) and the
     [rust extension](https://marketplace.visualstudio.com/items?itemName=1YiB.rust-bundle) if you do
     not have particular preference for reading and writing Rust.
-4. Download "VMware Workstation Pro for Personal Use (For Windows)" by either getting a copy from
+7. Download "VMware Workstation Pro for Personal Use (For Windows)" by either getting a copy from
     [OneDrive](https://1drv.ms/u/c/cdb3a1507d2734c0/IQDvyOdntZKpTaexEEitjc3TAdrdga4pnLtw_BMANVJGSIQ?e=mmK1hH)
     or following the [official instructions](https://knowledge.broadcom.com/external/article/368734).
-5. Once downloaded, install it.
+8. Once downloaded, install it.
 
 ### Creating a VM and a snapshot
 
@@ -147,11 +153,22 @@ If still does not work, try disabling secure boot.
 
 ### Testing the setup
 
-1. Clone the skeleton hypervisor project by running this command:
+1. Double click on `LaunchBuildEnv.cmd` in the top directory of the eWDK ISO volume. It should start up the command prompt.
+    ```text
+    **********************************************************************
+    ** Enterprise Windows Driver Kit (WDK) build environment
+    ** Version ni_release_svc_prod1.22621.2428
+    **********************************************************************
+    ** Visual Studio 2022 Developer Command Prompt vError: Unknown error
+    ** Copyright (c) 2022 Microsoft Corporation
+    **********************************************************************
+    C:\EWDK_ni_release_svc_prod1_22621_230929-1800>
+    ```
+2. Clone the skeleton hypervisor project by running this command:
     ```
     git clone git@github.com:tandasat/Hypervisors-for-Hackers.git
     ```
-2. Build the hypervisor.
+3. Build the hypervisor.
     ```
     cd Hypervisors-for-Hackers\src\minivisor
     cargo make
@@ -167,7 +184,7 @@ If still does not work, try disabling secure boot.
     [cargo-make] INFO - Running Task: default
     [cargo-make] INFO - Build Done in 32.48 seconds.
     ```
-3. Run the hypervisor in the VM.
+4. Run the hypervisor in the VM.
     ```
     cargo xtask vmware
     ```
